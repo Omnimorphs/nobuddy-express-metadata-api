@@ -38,7 +38,7 @@ const abi: AbiItem[] = [
 class ContractService implements IContractService {
   private readonly _config: Web3Config;
   private readonly _database: TokenDatabase;
-  private _web3: Web3;
+  public web3: Web3;
   private _contracts: Record<string, Contract> = {};
   private _totalSupplyLastQueriedMap: Record<string, number> = {};
   public totalSupplyMap: Record<string, number> = {};
@@ -48,7 +48,7 @@ class ContractService implements IContractService {
 
     this._database = database;
 
-    this._web3 = new Web3(this._createProvider());
+    this.web3 = new Web3(this._createProvider());
 
     this._initContracts();
   }
@@ -58,10 +58,7 @@ class ContractService implements IContractService {
    */
   public waitForWeb3Connection(): Promise<void> {
     return new Promise<void>((resolve) => {
-      (this._web3.currentProvider as WebsocketProvider).once(
-        'connect',
-        resolve
-      );
+      (this.web3.currentProvider as WebsocketProvider).once('connect', resolve);
     });
   }
 
@@ -112,7 +109,7 @@ class ContractService implements IContractService {
   private _initContracts(): void {
     this._contracts = Object.entries(this._database)
       .map(([collectionName, collection]) => ({
-        contract: new this._web3.eth.Contract(abi, collection.contractAddress),
+        contract: new this.web3.eth.Contract(abi, collection.contractAddress),
         collectionName,
       }))
       .reduce((obj, { collectionName, contract }) => {
@@ -145,7 +142,7 @@ class ContractService implements IContractService {
   }
 
   private async _resetConnection() {
-    this._web3 = new Web3(this._createProvider());
+    this.web3 = new Web3(this._createProvider());
     this._initContracts();
     await this.waitForWeb3Connection();
   }
