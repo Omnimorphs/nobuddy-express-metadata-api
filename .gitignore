@@ -4,6 +4,4 @@ node_modules
 
 .idea
 
-data/upload
-
 dist
