@@ -1,4 +1,5 @@
 import express from 'express';
+import merge from 'lodash/merge';
 import { TokenDatabase } from '../types/TokenDatabase';
 import { IContractService } from '../types/IContractService';
 import { HttpError } from '../errors';
@@ -10,7 +11,7 @@ export const api = async (
   database: TokenDatabase,
   userConfig: Partial<ApiConfig> = {}
 ): Promise<(req: express.Request, res: express.Response) => Promise<void>> => {
-  const config = { ...defaultApiConfig, ...userConfig };
+  const config = merge(defaultApiConfig, userConfig);
 
   if (config.web3) {
     const contractService = new ContractService(database, config.web3);
@@ -26,6 +27,7 @@ export const defaultRoute = '/token/:collectionName/:tokenId';
 export const createWithoutWeb3 =
   (database: TokenDatabase) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
+    res.type('application/json');
     const { collectionName, tokenId } = extractParams(req);
 
     ensureCollectionExists(database, collectionName);
@@ -45,6 +47,7 @@ export const createWithoutWeb3 =
 export const createWithWeb3 =
   (database: TokenDatabase, contractService: IContractService) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
+    res.type('application/json');
     const { collectionName, tokenId } = extractParams(req);
     let totalSupply;
     try {
@@ -74,7 +77,7 @@ export const isCollectionRevealed = (
   collectionName: string
 ): boolean => {
   return Boolean(
-    typeof database[collectionName].revealTime ||
+    !database[collectionName].revealTime ||
       (database[collectionName].revealTime as number) <= Date.now()
   );
 };
@@ -115,6 +118,6 @@ export const ensureTokenExists = (
 export const extractParams = (
   req: express.Request
 ): { collectionName: string; tokenId: number } => ({
-  collectionName: req.params.collection,
+  collectionName: req.params.collectionName,
   tokenId: parseInt(req.params.tokenId),
 });

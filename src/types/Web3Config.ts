@@ -4,5 +4,5 @@ export type Web3Config = {
     type: string;
     value?: string;
   };
-  totalSupplyCacheTTlSeconds: number;
+  totalSupplyCacheTTlSeconds?: number;
 };

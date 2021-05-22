@@ -59,7 +59,7 @@ class ContractService implements IContractService {
   public waitForWeb3Connection(): Promise<void> {
     return new Promise<void>((resolve) => {
       (this._web3.currentProvider as WebsocketProvider).once(
-        'connected',
+        'connect',
         resolve
       );
     });
@@ -74,7 +74,7 @@ class ContractService implements IContractService {
     if (
       !this.totalSupplyMap[collectionName] ||
       this._totalSupplyLastQueriedMap[collectionName] +
-        this._config.totalSupplyCacheTTlSeconds * 1000 <=
+        (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
         new Date().getTime()
     ) {
       if (!this._contracts[collectionName]) {
@@ -91,13 +91,15 @@ class ContractService implements IContractService {
         response = await this._getTotalSupplyResponse(collectionName);
       }
 
-      if (!response || typeof response[0] !== 'number') {
+      const totalSupply = parseInt(response);
+
+      if (isNaN(totalSupply)) {
         throw new InvalidTotalSupplyResponse(
           `Invalid total supply response for collection ${collectionName}`
         );
       }
 
-      this.totalSupplyMap[collectionName] = response[0];
+      this.totalSupplyMap[collectionName] = totalSupply;
       this._totalSupplyLastQueriedMap[collectionName] = new Date().getTime();
     }
     return this.totalSupplyMap[collectionName];
