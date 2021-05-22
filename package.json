@@ -1,5 +1,5 @@
 {
-  "name": "express-nft-collection-metadata-api",
+  "name": "express-nft-metadata-api",
   "version": "1.0.0",
   "description": "Simple nodejs metadata API implementation for NFT (Non-Fungible Token) collections for express",
   "main": "dist/index.js",
@@ -24,6 +24,7 @@
   "author": "Huba Gaspar",
   "license": "MIT",
   "dependencies": {
+    "commander": "^7.2.0",
     "lodash": "^4.17.21",
     "web3": "^1.3.6"
   },
