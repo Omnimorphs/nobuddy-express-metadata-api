@@ -2,11 +2,7 @@ import { Contract } from 'web3-eth-contract';
 import { WebsocketProvider } from 'web3-core';
 import { AbiItem } from 'web3-utils';
 import Web3 from 'web3';
-import {
-  InvalidAuthTypeError,
-  InvalidTotalSupplyResponse,
-  ContractNotFoundError,
-} from './errors';
+import { InvalidAuthTypeError, InvalidTotalSupplyResponse } from './errors';
 import { TokenDatabase } from './types/TokenDatabase';
 import { IContractService } from './types/IContractService';
 import { Web3Config } from './types/Web3Config';
@@ -54,6 +50,15 @@ class ContractService implements IContractService {
   }
 
   /**
+   * Resets web3 socket connection and waits until it's connected
+   */
+  public async resetConnection(): Promise<void> {
+    this.web3 = new Web3(this._createProvider());
+    this._initContracts();
+    await this.waitForWeb3Connection();
+  }
+
+  /**
    * Waits until Web3 is connected through the socket
    */
   public waitForWeb3Connection(): Promise<void> {
@@ -68,23 +73,23 @@ class ContractService implements IContractService {
    * @param collectionName
    */
   public async getTotalSupply(collectionName: string): Promise<number> {
+    // if the collection has no contractAddress, it will not be added to the
+    // contracts map, therefore this logic does not apply
+    if (!this._contracts[collectionName]) {
+      return Infinity;
+    }
     if (
       !this.totalSupplyMap[collectionName] ||
       this._totalSupplyLastQueriedMap[collectionName] +
         (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
         new Date().getTime()
     ) {
-      if (!this._contracts[collectionName]) {
-        throw new ContractNotFoundError(
-          `Web3 contract for collection ${collectionName} is not found`
-        );
-      }
       let response;
       try {
         response = await this._getTotalSupplyResponse(collectionName);
       } catch (e) {
         // a single retry on error, after re-initializing the web3 instance and connection
-        await this._resetConnection();
+        await this.resetConnection();
         response = await this._getTotalSupplyResponse(collectionName);
       }
 
@@ -108,6 +113,8 @@ class ContractService implements IContractService {
    */
   private _initContracts(): void {
     this._contracts = Object.entries(this._database)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .filter(([_, collection]) => collection.contractAddress)
       .map(([collectionName, collection]) => ({
         contract: new this.web3.eth.Contract(abi, collection.contractAddress),
         collectionName,
@@ -139,12 +146,6 @@ class ContractService implements IContractService {
       headers: { authorization },
       ...wsConfig,
     });
-  }
-
-  private async _resetConnection() {
-    this.web3 = new Web3(this._createProvider());
-    this._initContracts();
-    await this.waitForWeb3Connection();
   }
 
   private async _getTotalSupplyResponse(collectionName: string) {

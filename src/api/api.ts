@@ -7,19 +7,29 @@ import { ApiConfig } from '../types/ApiConfig';
 import defaultApiConfig from './defaultApiConfig';
 import ContractService from '../ContractService';
 
+export type ApiObject = {
+  handler: (req: express.Request, res: express.Response) => Promise<void>;
+  contractService?: ContractService;
+};
+
 export const api = async (
   database: TokenDatabase,
   userConfig: Partial<ApiConfig> = {}
-): Promise<(req: express.Request, res: express.Response) => Promise<void>> => {
+): Promise<ApiObject> => {
   const config = merge(defaultApiConfig, userConfig);
 
   if (config.web3) {
     const contractService = new ContractService(database, config.web3);
     await contractService.waitForWeb3Connection();
-    return createWithWeb3(database, contractService);
+    return {
+      handler: createWithWeb3(database, contractService),
+      contractService,
+    };
   }
 
-  return createWithoutWeb3(database);
+  return {
+    handler: createWithoutWeb3(database),
+  };
 };
 
 export const defaultRoute = '/token/:collectionName/:tokenId';
@@ -49,6 +59,9 @@ export const createWithWeb3 =
   async (req: express.Request, res: express.Response): Promise<void> => {
     res.type('application/json');
     const { collectionName, tokenId } = extractParams(req);
+
+    ensureCollectionExists(database, collectionName);
+
     let totalSupply;
     try {
       totalSupply = await contractService.getTotalSupply(collectionName);
@@ -56,8 +69,6 @@ export const createWithWeb3 =
       console.error(e);
       totalSupply = contractService.totalSupplyMap[collectionName];
     }
-
-    ensureCollectionExists(database, collectionName);
 
     if (
       isCollectionRevealed(database, collectionName) &&

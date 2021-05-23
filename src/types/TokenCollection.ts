@@ -1,5 +1,5 @@
 export type TokenCollection = {
-  contractAddress: string;
+  contractAddress?: string;
   revealTime?: number;
   reservedTokens?: number[];
   tokens: Record<string, Record<string, unknown>>;
