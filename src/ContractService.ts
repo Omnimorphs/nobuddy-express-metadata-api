@@ -7,7 +7,7 @@ import { TokenDatabase } from './types/TokenDatabase';
 import { IContractService } from './types/IContractService';
 import { Web3Config } from './types/Web3Config';
 
-const wsConfig = {
+export const wsConfig = {
   timeout: 30000,
   clientConfig: {
     keepalive: true,
@@ -21,7 +21,7 @@ const wsConfig = {
   },
 };
 
-const abi: AbiItem[] = [
+export const abi: AbiItem[] = [
   {
     inputs: [],
     name: 'totalSupply',
@@ -32,12 +32,12 @@ const abi: AbiItem[] = [
 ];
 
 class ContractService implements IContractService {
+  public web3: Web3;
+  public totalSupplyMap: Record<string, number> = {};
   private readonly _config: Web3Config;
   private readonly _database: TokenDatabase;
-  public web3: Web3;
   private _contracts: Record<string, Contract> = {};
   private _totalSupplyLastQueriedMap: Record<string, number> = {};
-  public totalSupplyMap: Record<string, number> = {};
 
   constructor(database: TokenDatabase, _config: Web3Config) {
     this._config = _config;
@@ -52,10 +52,10 @@ class ContractService implements IContractService {
   /**
    * Resets web3 socket connection and waits until it's connected
    */
-  public async resetConnection(): Promise<void> {
+  public resetConnection(): Promise<void> {
     this.web3 = new Web3(this._createProvider());
     this._initContracts();
-    await this.waitForWeb3Connection();
+    return this.waitForWeb3Connection();
   }
 
   /**
@@ -82,7 +82,7 @@ class ContractService implements IContractService {
       !this.totalSupplyMap[collectionName] ||
       this._totalSupplyLastQueriedMap[collectionName] +
         (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
-        new Date().getTime()
+        Date.now()
     ) {
       let response;
       try {
@@ -102,7 +102,7 @@ class ContractService implements IContractService {
       }
 
       this.totalSupplyMap[collectionName] = totalSupply;
-      this._totalSupplyLastQueriedMap[collectionName] = new Date().getTime();
+      this._totalSupplyLastQueriedMap[collectionName] = Date.now();
     }
     return this.totalSupplyMap[collectionName];
   }
@@ -115,12 +115,11 @@ class ContractService implements IContractService {
     this._contracts = Object.entries(this._database)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .filter(([_, collection]) => collection.contractAddress)
-      .map(([collectionName, collection]) => ({
-        contract: new this.web3.eth.Contract(abi, collection.contractAddress),
-        collectionName,
-      }))
-      .reduce((obj, { collectionName, contract }) => {
-        obj[collectionName] = contract;
+      .reduce((obj, [collectionName, collection]) => {
+        obj[collectionName] = new this.web3.eth.Contract(
+          abi,
+          collection.contractAddress
+        );
         return obj;
       }, {});
   }

@@ -37,7 +37,6 @@ export const defaultRoute = '/token/:collectionName/:tokenId';
 export const createWithoutWeb3 =
   (database: TokenDatabase) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
-    res.type('application/json');
     const { collectionName, tokenId } = extractParams(req);
 
     ensureCollectionExists(database, collectionName);
@@ -57,7 +56,6 @@ export const createWithoutWeb3 =
 export const createWithWeb3 =
   (database: TokenDatabase, contractService: IContractService) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
-    res.type('application/json');
     const { collectionName, tokenId } = extractParams(req);
 
     ensureCollectionExists(database, collectionName);
@@ -67,7 +65,7 @@ export const createWithWeb3 =
       totalSupply = await contractService.getTotalSupply(collectionName);
     } catch (e) {
       console.error(e);
-      totalSupply = contractService.totalSupplyMap[collectionName];
+      totalSupply = contractService.totalSupplyMap[collectionName] || 0;
     }
 
     if (
@@ -118,7 +116,10 @@ export const ensureTokenExists = (
   collectionName: string,
   tokenId: string | number
 ): void => {
-  if (!database[collectionName].tokens[tokenId]) {
+  if (
+    !database[collectionName].tokens ||
+    !database[collectionName].tokens[tokenId]
+  ) {
     throw new HttpError(
       404,
       `No token by tokenId ${tokenId} in collection ${collectionName}`
