@@ -40,13 +40,14 @@ const mockContractConstructor = jest.fn((abi, contractAddress) => ({
   contractAddress,
 }));
 
+mocked(Web3).mockReturnValue({
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  eth: { Contract: mockContractConstructor },
+});
+
 describe('ContractService.constructor', () => {
   it('should call constructor with all proper values', () => {
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
     const contractService = new ContractService(
       database,
       config.web3 as Web3Config
@@ -79,11 +80,6 @@ describe('ContractService._createProvider', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
     const contractService = new ContractService(database, web3Config);
 
     // Basic auth
@@ -142,11 +138,6 @@ describe('ContractService._initContracts', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
 
     const contractService = new ContractService(database, web3Config);
 
@@ -180,11 +171,6 @@ describe('ContractService._initContracts', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
 
     const contractService = new ContractService(database, web3Config);
 
@@ -210,11 +196,6 @@ describe('ContractService.getTotalSupply', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
 
     const contractService = new ContractService(database, web3Config);
 
@@ -230,11 +211,7 @@ describe('ContractService.getTotalSupply', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
+
     const mockTotalSupply = 10;
     const mockGetTotalSupplyResponse = jest
       .fn()
@@ -255,7 +232,7 @@ describe('ContractService.getTotalSupply', () => {
       typeof contractService['_totalSupplyLastQueriedMap']['collection']
     ).toEqual('number');
   });
-  it('should only query total supply again, if the configured TTL value is exceeded', async () => {
+  it('should only query total supply again, if the configuredx TTL value is exceeded', async () => {
     const database = {
       collection: {
         contractAddress: '1',
@@ -273,11 +250,7 @@ describe('ContractService.getTotalSupply', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
+
     const mockTotalSupply = 10;
     const mockTotalSupply2 = 11;
     const mockGetTotalSupplyResponse = jest
@@ -327,11 +300,7 @@ describe('ContractService.getTotalSupply', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
+
     const mockTotalSupply = 10;
     const mockGetTotalSupplyResponse = jest
       .fn()
@@ -361,11 +330,7 @@ describe('ContractService.getTotalSupply', () => {
       },
     };
     const web3Config = config.web3 as Web3Config;
-    mocked(Web3).mockReturnValueOnce({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      eth: { Contract: mockContractConstructor },
-    });
+
     const mockGetTotalSupplyResponse = jest
       .fn()
       .mockReturnValueOnce('non-number-string');
