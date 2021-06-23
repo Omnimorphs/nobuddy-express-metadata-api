@@ -4,6 +4,7 @@ import { IContractService } from './types/IContractService';
 import { Network, Slug } from './types/_';
 import { ethers } from 'ethers';
 import { ApiConfig } from './types/ApiConfig';
+import { get, set } from 'lodash';
 
 export const abi = ['function totalSupply() view returns (uint256)'];
 
@@ -49,7 +50,7 @@ class ContractService implements IContractService {
       return Infinity;
     }
     if (
-      !this.totalSupplyMap[collectionName][networkName] ||
+      !get(this.totalSupplyMap, [collectionName, networkName]) ||
       this._totalSupplyLastQueriedMap[collectionName][networkName] +
         (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
         Date.now()
@@ -65,8 +66,12 @@ class ContractService implements IContractService {
         );
       }
 
-      this.totalSupplyMap[collectionName][networkName] = totalSupply;
-      this._totalSupplyLastQueriedMap[collectionName][networkName] = Date.now();
+      set(this.totalSupplyMap, [collectionName, networkName], totalSupply);
+      set(
+        this._totalSupplyLastQueriedMap,
+        [collectionName, networkName],
+        Date.now()
+      );
     }
     return this.totalSupplyMap[collectionName][networkName];
   }
@@ -93,10 +98,10 @@ class ContractService implements IContractService {
           );
         }
         // create the contract instance with the appropriate provider
-        this._contracts[collectionName][network] = new ethers.Contract(
-          address,
-          abi,
-          this._providers[network]
+        set(
+          this._contracts,
+          [collectionName, network],
+          new ethers.Contract(address, abi, this._providers[network])
         );
       }
     }
