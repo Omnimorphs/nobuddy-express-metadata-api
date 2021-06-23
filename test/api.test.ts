@@ -9,8 +9,15 @@ import { HttpError } from '../src/errors';
 
 afterEach(() => jest.clearAllMocks());
 
-const database = {
+const database: TokenDatabase = {
   collection: {
+    contract: {
+      deployments: {
+        lol: {
+          address: 'dadsdas',
+        },
+      },
+    },
     reservedTokens: [1, 2],
     revealTime: new Date(0).getTime(),
     tokens: {
@@ -20,6 +27,13 @@ const database = {
     },
   },
   collectionNoReserved: {
+    contract: {
+      deployments: {
+        lol: {
+          address: 'dadsdas',
+        },
+      },
+    },
     tokens: {
       0: {
         name: 'name0',
@@ -27,6 +41,13 @@ const database = {
     },
   },
   collectionFutureReveal: {
+    contract: {
+      deployments: {
+        lol: {
+          address: 'dadsdas',
+        },
+      },
+    },
     revealTime: new Date(3000, 1, 1).getTime(),
     tokens: {
       0: {

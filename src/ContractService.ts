@@ -6,6 +6,7 @@ import { InvalidAuthTypeError, InvalidTotalSupplyResponse } from './errors';
 import { TokenDatabase } from './types/TokenDatabase';
 import { IContractService } from './types/IContractService';
 import { Web3Config } from './types/Web3Config';
+import { Network, Slug } from './types/_';
 
 export const wsConfig = {
   timeout: 30000,
@@ -32,12 +33,24 @@ export const abi: AbiItem[] = [
 ];
 
 class ContractService implements IContractService {
+  /**
+   * Collection->Network->totalSupply
+   */
+  public totalSupplyMap: Record<Slug, Record<Network, number>> = {};
   public web3: Web3;
-  public totalSupplyMap: Record<string, number> = {};
+
+  /**
+   * Collection->Network->Contract
+   */
+  private _contracts: Record<Slug, Record<Network, Contract>> = {};
+  /**
+   * Collection->Network->lastQueriedDate
+   * @private
+   */
+  private _totalSupplyLastQueriedMap: Record<Slug, Record<Network, number>> =
+    {};
   private readonly _config: Web3Config;
   private readonly _database: TokenDatabase;
-  private _contracts: Record<string, Contract> = {};
-  private _totalSupplyLastQueriedMap: Record<string, number> = {};
 
   constructor(database: TokenDatabase, _config: Web3Config) {
     this._config = _config;
@@ -71,26 +84,36 @@ class ContractService implements IContractService {
    * Returns the current totalSupply value for a collection
    * Caches result for config.totalSupplyCacheTTlSeconds seconds
    * @param collectionName
+   * @param networkName
    */
-  public async getTotalSupply(collectionName: string): Promise<number> {
+  public async getTotalSupply(
+    collectionName: Slug,
+    networkName: Network
+  ): Promise<number> {
     // if the collection has no contractAddress, it will not be added to the
     // contracts map, therefore this logic does not apply
-    if (!this._contracts[collectionName]) {
+    if (!this._contracts[collectionName][networkName]) {
       return Infinity;
     }
     if (
-      !this.totalSupplyMap[collectionName] ||
-      this._totalSupplyLastQueriedMap[collectionName] +
+      !this.totalSupplyMap[collectionName][networkName] ||
+      this._totalSupplyLastQueriedMap[collectionName][networkName] +
         (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
         Date.now()
     ) {
       let response;
       try {
-        response = await this._getTotalSupplyResponse(collectionName);
+        response = await this._getTotalSupplyResponse(
+          collectionName,
+          networkName
+        );
       } catch (e) {
         // a single retry on error, after re-initializing the web3 instance and connection
         await this.resetConnection();
-        response = await this._getTotalSupplyResponse(collectionName);
+        response = await this._getTotalSupplyResponse(
+          collectionName,
+          networkName
+        );
       }
 
       const totalSupply = parseInt(response);
@@ -101,24 +124,30 @@ class ContractService implements IContractService {
         );
       }
 
-      this.totalSupplyMap[collectionName] = totalSupply;
-      this._totalSupplyLastQueriedMap[collectionName] = Date.now();
+      this.totalSupplyMap[collectionName][networkName] = totalSupply;
+      this._totalSupplyLastQueriedMap[collectionName][networkName] = Date.now();
     }
-    return this.totalSupplyMap[collectionName];
+    return this.totalSupplyMap[collectionName][networkName];
   }
 
   /**
-   * Initializes Web3.eth.Contract objects for all collections in the database
+   * Initializes Web3.eth.Contract objects for all deployed contracts
+   * of all collections in the database
    * @private
    */
   private _initContracts(): void {
     this._contracts = Object.entries(this._database)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .filter(([_, collection]) => collection.contractAddress)
+      .filter(([_, collection]) => collection.contract.deployments)
       .reduce((obj, [collectionName, collection]) => {
-        obj[collectionName] = new this.web3.eth.Contract(
-          abi,
-          collection.contractAddress
+        obj[collectionName] = {};
+        Object.entries(collection.contract.deployments).forEach(
+          ([network, { address }]) => {
+            obj[collectionName][network] = new this.web3.eth.Contract(
+              abi,
+              address
+            );
+          }
         );
         return obj;
       }, {});
@@ -147,8 +176,13 @@ class ContractService implements IContractService {
     });
   }
 
-  private async _getTotalSupplyResponse(collectionName: string) {
-    return await this._contracts[collectionName].methods.totalSupply().call();
+  private async _getTotalSupplyResponse(
+    collectionName: Slug,
+    networkName: Network
+  ) {
+    return await this._contracts[collectionName][networkName].methods
+      .totalSupply()
+      .call();
   }
 }
 

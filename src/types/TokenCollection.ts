@@ -1,5 +1,7 @@
+import { CollectionContract } from './CollectionContract';
+
 export type TokenCollection = {
-  contractAddress?: string;
+  contract: CollectionContract;
   revealTime?: number;
   reservedTokens?: number[];
   tokens: Record<string, Record<string, unknown>>;

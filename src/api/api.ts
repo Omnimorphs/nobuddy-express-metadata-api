@@ -32,7 +32,7 @@ export const api = async (
   };
 };
 
-export const defaultRoute = '/token/:collectionName/:tokenId';
+export const defaultRoute = '/nft/:networkName/:collectionName/:tokenId';
 
 export const createWithoutWeb3 =
   (database: TokenDatabase) =>
@@ -56,13 +56,16 @@ export const createWithoutWeb3 =
 export const createWithWeb3 =
   (database: TokenDatabase, contractService: IContractService) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
-    const { collectionName, tokenId } = extractParams(req);
+    const { collectionName, tokenId, networkName } = extractParams(req);
 
     ensureCollectionExists(database, collectionName);
 
     let totalSupply;
     try {
-      totalSupply = await contractService.getTotalSupply(collectionName);
+      totalSupply = await contractService.getTotalSupply(
+        collectionName,
+        networkName
+      );
     } catch (e) {
       console.error(e);
       totalSupply = contractService.totalSupplyMap[collectionName] || 0;
@@ -129,7 +132,8 @@ export const ensureTokenExists = (
 
 export const extractParams = (
   req: express.Request
-): { collectionName: string; tokenId: number } => ({
+): { collectionName: string; tokenId: number; networkName: string } => ({
+  networkName: req.params.networkName,
   collectionName: req.params.collectionName,
   tokenId: parseInt(req.params.tokenId),
 });

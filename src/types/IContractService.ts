@@ -1,5 +1,10 @@
+import { Network, Slug } from './_';
+
 export interface IContractService {
-  getTotalSupply: (collectionName: string) => Promise<number>;
+  getTotalSupply: (
+    collectionName: string,
+    networkName: string
+  ) => Promise<number>;
   waitForWeb3Connection: () => Promise<void>;
-  totalSupplyMap: Record<string, number>;
+  totalSupplyMap: Record<Slug, Record<Network, number>>;
 }

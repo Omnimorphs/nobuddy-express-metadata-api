@@ -14,7 +14,13 @@ afterEach(() => jest.clearAllMocks());
 
 const database: TokenDatabase = {
   collection: {
-    contractAddress: '1234343',
+    contract: {
+      deployments: {
+        network: {
+          address: 'dadsdas',
+        },
+      },
+    },
     tokens: {
       placeholder: {
         name: 'placeholder',
@@ -60,8 +66,11 @@ describe('ContractService.constructor', () => {
       eth: { Contract: mockContractConstructor },
     });
     expect(Object.keys(contractService['_contracts'])).toHaveLength(1);
-    expect(contractService['_contracts'].collection).toEqual({
-      contractAddress: database.collection.contractAddress,
+    expect(Object.keys(contractService['_contracts'].collection)).toHaveLength(
+      1
+    );
+    expect(contractService['_contracts'].collection.network).toEqual({
+      contractAddress: database.collection.contract.deployments.network.address,
     });
     expect(contractService['_database']).toStrictEqual(database);
     expect(contractService['_config']).toStrictEqual(config.web3);
