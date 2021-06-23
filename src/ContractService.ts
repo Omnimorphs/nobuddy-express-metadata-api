@@ -1,83 +1,36 @@
-import { Contract } from 'web3-eth-contract';
-import { WebsocketProvider } from 'web3-core';
-import { AbiItem } from 'web3-utils';
-import Web3 from 'web3';
-import { InvalidAuthTypeError, InvalidTotalSupplyResponse } from './errors';
+import { InvalidTotalSupplyResponse } from './errors';
 import { TokenDatabase } from './types/TokenDatabase';
 import { IContractService } from './types/IContractService';
-import { Web3Config } from './types/Web3Config';
 import { Network, Slug } from './types/_';
+import { ethers } from 'ethers';
+import { ApiConfig } from './types/ApiConfig';
 
-export const wsConfig = {
-  timeout: 30000,
-  clientConfig: {
-    keepalive: true,
-    keepaliveInterval: 20000,
-  },
-  reconnect: {
-    auto: true,
-    delay: 1000,
-    maxAttempts: 10,
-    onTimeout: false,
-  },
-};
-
-export const abi: AbiItem[] = [
-  {
-    inputs: [],
-    name: 'totalSupply',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
+export const abi = ['function totalSupply() view returns (uint256)'];
 
 class ContractService implements IContractService {
   /**
    * Collection->Network->totalSupply
    */
   public totalSupplyMap: Record<Slug, Record<Network, number>> = {};
-  public web3: Web3;
 
   /**
    * Collection->Network->Contract
    */
-  private _contracts: Record<Slug, Record<Network, Contract>> = {};
+  private _contracts: Record<Slug, Record<Network, ethers.Contract>> = {};
   /**
-   * Collection->Network->lastQueriedDate
+   * Collection->Network->totalSupplyLastQueried
    * @private
    */
   private _totalSupplyLastQueriedMap: Record<Slug, Record<Network, number>> =
     {};
-  private readonly _config: Web3Config;
-  private readonly _database: TokenDatabase;
+  private readonly _providers: Record<Network, ethers.providers.BaseProvider> =
+    {};
 
-  constructor(database: TokenDatabase, _config: Web3Config) {
-    this._config = _config;
-
-    this._database = database;
-
-    this.web3 = new Web3(this._createProvider());
-
+  constructor(
+    private readonly _database: TokenDatabase,
+    private readonly _config: ApiConfig
+  ) {
     this._initContracts();
-  }
-
-  /**
-   * Resets web3 socket connection and waits until it's connected
-   */
-  public resetConnection(): Promise<void> {
-    this.web3 = new Web3(this._createProvider());
-    this._initContracts();
-    return this.waitForWeb3Connection();
-  }
-
-  /**
-   * Waits until Web3 is connected through the socket
-   */
-  public waitForWeb3Connection(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      (this.web3.currentProvider as WebsocketProvider).once('connect', resolve);
-    });
   }
 
   /**
@@ -101,22 +54,10 @@ class ContractService implements IContractService {
         (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
         Date.now()
     ) {
-      let response;
-      try {
-        response = await this._getTotalSupplyResponse(
-          collectionName,
-          networkName
-        );
-      } catch (e) {
-        // a single retry on error, after re-initializing the web3 instance and connection
-        await this.resetConnection();
-        response = await this._getTotalSupplyResponse(
-          collectionName,
-          networkName
-        );
-      }
+      const totalSupplyBigNumber: ethers.BigNumber =
+        await this._getTotalSupplyResponse(collectionName, networkName);
 
-      const totalSupply = parseInt(response);
+      const totalSupply = totalSupplyBigNumber.toNumber();
 
       if (isNaN(totalSupply)) {
         throw new InvalidTotalSupplyResponse(
@@ -130,59 +71,35 @@ class ContractService implements IContractService {
     return this.totalSupplyMap[collectionName][networkName];
   }
 
-  /**
-   * Initializes Web3.eth.Contract objects for all deployed contracts
-   * of all collections in the database
-   * @private
-   */
-  private _initContracts(): void {
-    this._contracts = Object.entries(this._database)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .filter(([_, collection]) => collection.contract.deployments)
-      .reduce((obj, [collectionName, collection]) => {
-        obj[collectionName] = {};
-        Object.entries(collection.contract.deployments).forEach(
-          ([network, { address }]) => {
-            obj[collectionName][network] = new this.web3.eth.Contract(
-              abi,
-              address
-            );
-          }
-        );
-        return obj;
-      }, {});
-  }
-
-  /**
-   * Creates a Web3 WebsocketProvider based on the provided config
-   * @private
-   */
-  private _createProvider(): WebsocketProvider {
-    let authorization: string;
-    if (this._config.authorization.type === 'Basic') {
-      authorization = `${this._config.authorization.type} ${Buffer.from(
-        this._config.authorization.value as string
-      ).toString('base64')}`;
-    } else if (this._config.authorization.type === 'Bearer') {
-      authorization = `${this._config.authorization.type} ${this._config.authorization.value}`;
-    } else {
-      throw new InvalidAuthTypeError(
-        `Invalid web3 auth type: ${this._config.authorization.type}`
-      );
-    }
-    return new Web3.providers.WebsocketProvider(this._config.host as string, {
-      headers: { authorization },
-      ...wsConfig,
-    });
-  }
-
   private async _getTotalSupplyResponse(
     collectionName: Slug,
     networkName: Network
-  ) {
-    return await this._contracts[collectionName][networkName].methods
-      .totalSupply()
-      .call();
+  ): Promise<ethers.BigNumber> {
+    return await this._contracts[collectionName][networkName].totalSupply();
+  }
+
+  private _initContracts() {
+    // iterating collections in the database
+    for (const [collectionName, collection] of Object.entries(this._database)) {
+      // iterating deployed contracts for the collection
+      for (const [network, { address }] of Object.entries(
+        collection.contract.deployments
+      )) {
+        // if provider for the given network does not exist yet, create it
+        if (!this._providers[network]) {
+          this._providers[network] = ethers.getDefaultProvider(
+            network,
+            this._config.ethers?.apiKeys
+          );
+        }
+        // create the contract instance with the appropriate provider
+        this._contracts[collectionName][network] = new ethers.Contract(
+          address,
+          abi,
+          this._providers[network]
+        );
+      }
+    }
   }
 }
 

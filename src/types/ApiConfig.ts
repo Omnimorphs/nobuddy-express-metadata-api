@@ -1,5 +1,8 @@
-import { Web3Config } from './Web3Config';
+import { ApiKeys } from './ApiKeys';
 
 export type ApiConfig = {
-  web3: Web3Config | false;
+  ethers?: {
+    apiKeys?: ApiKeys;
+  };
+  totalSupplyCacheTTlSeconds: number;
 };

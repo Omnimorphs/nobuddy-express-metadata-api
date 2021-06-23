@@ -18,9 +18,8 @@ export const api = async (
 ): Promise<ApiObject> => {
   const config = merge(defaultApiConfig, userConfig);
 
-  if (config.web3) {
-    const contractService = new ContractService(database, config.web3);
-    await contractService.waitForWeb3Connection();
+  if (config.ethers) {
+    const contractService = new ContractService(database, config);
     return {
       handler: createWithWeb3(database, contractService),
       contractService,

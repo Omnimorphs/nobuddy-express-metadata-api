@@ -5,6 +5,5 @@ export interface IContractService {
     collectionName: string,
     networkName: string
   ) => Promise<number>;
-  waitForWeb3Connection: () => Promise<void>;
   totalSupplyMap: Record<Slug, Record<Network, number>>;
 }
