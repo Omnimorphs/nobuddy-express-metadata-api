@@ -6,34 +6,35 @@ import { HttpError } from '../errors';
 import { ApiConfig } from '../types/ApiConfig';
 import defaultApiConfig from './defaultApiConfig';
 import ContractService from '../ContractService';
+import { Network, Slug } from '../types/_';
 
 export type ApiObject = {
   handler: (req: express.Request, res: express.Response) => Promise<void>;
   contractService?: ContractService;
 };
 
-export const api = async (
+export const api = (
   database: TokenDatabase,
   userConfig: Partial<ApiConfig> = {}
-): Promise<ApiObject> => {
+): ApiObject => {
   const config = merge(defaultApiConfig, userConfig);
 
   if (config.ethers) {
     const contractService = new ContractService(database, config);
     return {
-      handler: createWithWeb3(database, contractService),
+      handler: createWithEthers(database, contractService),
       contractService,
     };
   }
 
   return {
-    handler: createWithoutWeb3(database),
+    handler: createWithoutEthers(database),
   };
 };
 
 export const defaultRoute = '/nft/:networkName/:collectionName/:tokenId';
 
-export const createWithoutWeb3 =
+export const createWithoutEthers =
   (database: TokenDatabase) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
     const { collectionName, tokenId } = extractParams(req);
@@ -52,14 +53,15 @@ export const createWithoutWeb3 =
     }
   };
 
-export const createWithWeb3 =
+export const createWithEthers =
   (database: TokenDatabase, contractService: IContractService) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
     const { collectionName, tokenId, networkName } = extractParams(req);
 
     ensureCollectionExists(database, collectionName);
+    ensureDeploymentNetwork(database, collectionName, networkName);
 
-    let totalSupply;
+    let totalSupply: number;
     try {
       totalSupply = await contractService.getTotalSupply(
         collectionName,
@@ -67,7 +69,8 @@ export const createWithWeb3 =
       );
     } catch (e) {
       console.error(e);
-      totalSupply = contractService.totalSupplyMap[collectionName] || 0;
+      totalSupply =
+        contractService.totalSupplyMap[collectionName][networkName] || 0;
     }
 
     if (
@@ -85,7 +88,7 @@ export const createWithWeb3 =
 
 export const isCollectionRevealed = (
   database: TokenDatabase,
-  collectionName: string
+  collectionName: Slug
 ): boolean => {
   return Boolean(
     !database[collectionName].revealTime ||
@@ -95,18 +98,15 @@ export const isCollectionRevealed = (
 
 export const isTokenReserved = (
   database: TokenDatabase,
-  collectionName: string,
+  collectionName: Slug,
   tokenId: number
 ): boolean => {
-  return Boolean(
-    database[collectionName].reservedTokens &&
-      database[collectionName].reservedTokens?.includes(tokenId)
-  );
+  return Boolean(database[collectionName]?.reservedTokens?.includes(tokenId));
 };
 
 export const ensureCollectionExists = (
   database: TokenDatabase,
-  collectionName: string
+  collectionName: Slug
 ): void => {
   if (!database[collectionName]) {
     throw new HttpError(404, `No such collection: ${collectionName}`);
@@ -115,16 +115,26 @@ export const ensureCollectionExists = (
 
 export const ensureTokenExists = (
   database: TokenDatabase,
-  collectionName: string,
+  collectionName: Slug,
   tokenId: string | number
 ): void => {
-  if (
-    !database[collectionName].tokens ||
-    !database[collectionName].tokens[tokenId]
-  ) {
+  if (!database[collectionName]?.tokens?.[tokenId]) {
     throw new HttpError(
       404,
       `No token by tokenId ${tokenId} in collection ${collectionName}`
+    );
+  }
+};
+
+export const ensureDeploymentNetwork = (
+  database: TokenDatabase,
+  collectionName: Slug,
+  networkName: Network
+): void => {
+  if (!database[collectionName]?.contract?.deployments?.[networkName]) {
+    throw new HttpError(
+      404,
+      `Collection ${collectionName} is not deployed to network ${networkName}`
     );
   }
 };

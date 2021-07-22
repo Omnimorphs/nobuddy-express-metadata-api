@@ -44,11 +44,6 @@ class ContractService implements IContractService {
     collectionName: Slug,
     networkName: Network
   ): Promise<number> {
-    // if the collection has no contractAddress, it will not be added to the
-    // contracts map, therefore this logic does not apply
-    if (!this._contracts[collectionName][networkName]) {
-      return Infinity;
-    }
     if (
       !get(this.totalSupplyMap, [collectionName, networkName]) ||
       this._totalSupplyLastQueriedMap[collectionName][networkName] +
@@ -58,13 +53,13 @@ class ContractService implements IContractService {
       const totalSupplyBigNumber: ethers.BigNumber =
         await this._getTotalSupplyResponse(collectionName, networkName);
 
-      const totalSupply = totalSupplyBigNumber.toNumber();
-
-      if (isNaN(totalSupply)) {
+      if (typeof totalSupplyBigNumber.toNumber !== 'function') {
         throw new InvalidTotalSupplyResponse(
           `Invalid total supply response for collection ${collectionName}`
         );
       }
+
+      const totalSupply = totalSupplyBigNumber.toNumber();
 
       set(this.totalSupplyMap, [collectionName, networkName], totalSupply);
       set(
@@ -76,11 +71,11 @@ class ContractService implements IContractService {
     return this.totalSupplyMap[collectionName][networkName];
   }
 
-  private async _getTotalSupplyResponse(
+  private _getTotalSupplyResponse(
     collectionName: Slug,
     networkName: Network
   ): Promise<ethers.BigNumber> {
-    return await this._contracts[collectionName][networkName].totalSupply();
+    return this._contracts[collectionName][networkName].totalSupply();
   }
 
   private _initContracts() {
