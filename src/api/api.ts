@@ -70,7 +70,7 @@ export const createWithEthers =
     } catch (e) {
       console.error(e);
       totalSupply =
-        contractService.totalSupplyMap[collectionName][networkName] || 0;
+        contractService.totalSupplyMap?.[collectionName]?.[networkName] || 0;
     }
 
     if (
