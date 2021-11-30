@@ -37,52 +37,70 @@ export const defaultRoute = '/nft/:networkName/:collectionName/:tokenId';
 export const createWithoutEthers =
   (database: TokenDatabase) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
-    const { collectionName, tokenId } = extractParams(req);
+    try {
+      const { collectionName, tokenId } = extractParams(req);
 
-    ensureCollectionExists(database, collectionName);
+      ensureCollectionExists(database, collectionName);
 
-    if (
-      isCollectionRevealed(database, collectionName) &&
-      !isTokenReserved(database, collectionName, tokenId)
-    ) {
-      ensureTokenExists(database, collectionName, tokenId);
-      res.json(database[collectionName].tokens[tokenId]);
-    } else {
-      ensureTokenExists(database, collectionName, 'placeholder');
-      res.json(database[collectionName].tokens.placeholder);
+      if (
+        isCollectionRevealed(database, collectionName) &&
+        !isTokenReserved(database, collectionName, tokenId)
+      ) {
+        ensureTokenExists(database, collectionName, tokenId);
+        res.json(database[collectionName].tokens[tokenId]);
+      } else {
+        ensureTokenExists(database, collectionName, 'placeholder');
+        res.json(database[collectionName].tokens.placeholder);
+      }
+    } catch (error) {
+      res.status(error.status || 500).send({
+        error: {
+          status: error.status || 500,
+          message: error.message || 'Internal Server Error',
+        },
+      });
     }
   };
 
 export const createWithEthers =
   (database: TokenDatabase, contractService: IContractService) =>
   async (req: express.Request, res: express.Response): Promise<void> => {
-    const { collectionName, tokenId, networkName } = extractParams(req);
-
-    ensureCollectionExists(database, collectionName);
-    ensureDeploymentNetwork(database, collectionName, networkName);
-
-    let totalSupply: number;
     try {
-      totalSupply = await contractService.getTotalSupply(
-        collectionName,
-        networkName
-      );
-    } catch (e) {
-      console.error(e);
-      totalSupply =
-        contractService.totalSupplyMap?.[collectionName]?.[networkName] || 0;
-    }
+      const { collectionName, tokenId, networkName } = extractParams(req);
 
-    if (
-      isCollectionRevealed(database, collectionName) &&
-      !isTokenReserved(database, collectionName, tokenId) &&
-      totalSupply > tokenId
-    ) {
-      ensureTokenExists(database, collectionName, tokenId);
-      res.json(database[collectionName].tokens[tokenId]);
-    } else {
-      ensureTokenExists(database, collectionName, 'placeholder');
-      res.json(database[collectionName].tokens.placeholder);
+      ensureCollectionExists(database, collectionName);
+      ensureDeploymentNetwork(database, collectionName, networkName);
+
+      let totalSupply: number;
+      try {
+        totalSupply = await contractService.getTotalSupply(
+          collectionName,
+          networkName
+        );
+      } catch (e) {
+        console.error(e);
+        totalSupply =
+          contractService.totalSupplyMap?.[collectionName]?.[networkName] || 0;
+      }
+
+      if (
+        isCollectionRevealed(database, collectionName) &&
+        !isTokenReserved(database, collectionName, tokenId) &&
+        totalSupply > tokenId
+      ) {
+        ensureTokenExists(database, collectionName, tokenId);
+        res.json(database[collectionName].tokens[tokenId]);
+      } else {
+        ensureTokenExists(database, collectionName, 'placeholder');
+        res.json(database[collectionName].tokens.placeholder);
+      }
+    } catch (error) {
+      res.status(error.status || 500).send({
+        error: {
+          status: error.status || 500,
+          message: error.message || 'Internal Server Error',
+        },
+      });
     }
   };
 
