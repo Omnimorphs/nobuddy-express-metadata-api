@@ -71,22 +71,16 @@ export const createWithEthers =
       ensureCollectionExists(database, collectionName);
       ensureDeploymentNetwork(database, collectionName, networkName);
 
-      let totalSupply: number;
-      try {
-        totalSupply = await contractService.getTotalSupply(
-          collectionName,
-          networkName
-        );
-      } catch (e) {
-        console.error(e);
-        totalSupply =
-          contractService.totalSupplyMap?.[collectionName]?.[networkName] || 0;
-      }
+      const exists = await contractService.exists(
+        collectionName,
+        networkName,
+        tokenId
+      );
 
       if (
         isCollectionRevealed(database, collectionName) &&
         !isTokenReserved(database, collectionName, tokenId) &&
-        totalSupply > tokenId
+        exists
       ) {
         ensureTokenExists(database, collectionName, tokenId);
         res.json(database[collectionName].tokens[tokenId]);

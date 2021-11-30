@@ -1,31 +1,23 @@
-import { InvalidTotalSupplyResponse } from './errors';
 import { TokenDatabase } from './types/TokenDatabase';
 import { IContractService } from './types/IContractService';
 import { Network, Slug } from './types/_';
 import { ethers } from 'ethers';
 import { ApiConfig } from './types/ApiConfig';
-import { get, set } from 'lodash';
+import { set } from 'lodash';
 
-export const abi = ['function totalSupply() view returns (uint256)'];
+export const abi = ['function ownerOf(uint256) view returns (address)'];
 
 class ContractService implements IContractService {
-  /**
-   * Collection->Network->totalSupply
-   */
-  public totalSupplyMap: Record<Slug, Record<Network, number>> = {};
-
   /**
    * Collection->Network->Contract
    */
   private _contracts: Record<Slug, Record<Network, ethers.Contract>> = {};
-  /**
-   * Collection->Network->totalSupplyLastQueried
-   * @private
-   */
-  private _totalSupplyLastQueriedMap: Record<Slug, Record<Network, number>> =
-    {};
   private readonly _providers: Record<Network, ethers.providers.BaseProvider> =
     {};
+  private _existsMap: Record<
+    Slug,
+    Record<Network, Record<string, { value: boolean; timestamp: number }>>
+  > = {};
 
   constructor(
     private readonly _database: TokenDatabase,
@@ -34,48 +26,32 @@ class ContractService implements IContractService {
     this._initContracts();
   }
 
-  /**
-   * Returns the current totalSupply value for a collection
-   * Caches result for config.totalSupplyCacheTTlSeconds seconds
-   * @param collectionName
-   * @param networkName
-   */
-  public async getTotalSupply(
+  async exists(
     collectionName: Slug,
-    networkName: Network
-  ): Promise<number> {
+    networkName: Network,
+    tokenId: number
+  ): Promise<boolean> {
+    const timestamp = Date.now() / 1000;
     if (
-      !get(this.totalSupplyMap, [collectionName, networkName]) ||
-      this._totalSupplyLastQueriedMap[collectionName][networkName] +
-        (this._config.totalSupplyCacheTTlSeconds as number) * 1000 <=
-        Date.now()
+      typeof this._existsMap[collectionName][networkName][tokenId]?.value ===
+        'boolean' &&
+      this._existsMap[collectionName][networkName][tokenId]?.timestamp >
+        timestamp - this._config.totalSupplyCacheTTlSeconds
     ) {
-      const totalSupplyBigNumber: ethers.BigNumber =
-        await this._getTotalSupplyResponse(collectionName, networkName);
-
-      if (typeof totalSupplyBigNumber.toNumber !== 'function') {
-        throw new InvalidTotalSupplyResponse(
-          `Invalid total supply response for collection ${collectionName}`
-        );
-      }
-
-      const totalSupply = totalSupplyBigNumber.toNumber();
-
-      set(this.totalSupplyMap, [collectionName, networkName], totalSupply);
-      set(
-        this._totalSupplyLastQueriedMap,
-        [collectionName, networkName],
-        Date.now()
-      );
+      return this._existsMap[collectionName][networkName][tokenId].value;
     }
-    return this.totalSupplyMap[collectionName][networkName];
-  }
 
-  private _getTotalSupplyResponse(
-    collectionName: Slug,
-    networkName: Network
-  ): Promise<ethers.BigNumber> {
-    return this._contracts[collectionName][networkName].totalSupply();
+    let value = true;
+    try {
+      await this._contracts[collectionName][networkName].ownerOf(tokenId);
+    } catch (e) {
+      value = false;
+    }
+    this._existsMap[collectionName][networkName][tokenId] = {
+      value,
+      timestamp,
+    };
+    return value;
   }
 
   private _initContracts() {
