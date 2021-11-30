@@ -3,7 +3,7 @@ import { IContractService } from './types/IContractService';
 import { Network, Slug } from './types/_';
 import { ethers } from 'ethers';
 import { ApiConfig } from './types/ApiConfig';
-import { set } from 'lodash';
+import { get, set } from 'lodash';
 
 export const abi = ['function ownerOf(uint256) view returns (address)'];
 
@@ -33,9 +33,18 @@ class ContractService implements IContractService {
   ): Promise<boolean> {
     const timestamp = Date.now() / 1000;
     if (
-      typeof this._existsMap[collectionName][networkName][tokenId]?.value ===
-        'boolean' &&
-      this._existsMap[collectionName][networkName][tokenId]?.timestamp >
+      typeof get(this._existsMap, [
+        collectionName,
+        networkName,
+        tokenId,
+        'value',
+      ]) === 'boolean' &&
+      get(this._existsMap, [
+        collectionName,
+        networkName,
+        tokenId,
+        'timestamp',
+      ]) >
         timestamp - this._config.totalSupplyCacheTTlSeconds
     ) {
       return this._existsMap[collectionName][networkName][tokenId].value;
@@ -47,10 +56,10 @@ class ContractService implements IContractService {
     } catch (e) {
       value = false;
     }
-    this._existsMap[collectionName][networkName][tokenId] = {
+    set(this._existsMap, [collectionName, networkName, tokenId], {
       value,
       timestamp,
-    };
+    });
     return value;
   }
 
