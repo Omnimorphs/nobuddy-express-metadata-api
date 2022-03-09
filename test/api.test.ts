@@ -1,40 +1,43 @@
 import {
   createWithEthers,
   createWithoutEthers,
-  ensureCollectionExists,
   ensureDeploymentNetwork,
   ensureTokenExists,
-} from './src/api/api';
-import { TokenDatabase } from './src/types/TokenDatabase';
-import { HttpError } from './src/errors';
+} from '../src/api/api';
+import { TokenDatabase } from '../src/types/TokenDatabase';
+import { HttpError } from '../src/errors';
 import express from 'express';
-import ContractService from './src/ContractService';
+import ContractService from '../src/ContractService';
 import { mocked } from 'ts-jest';
 
 afterEach(() => jest.clearAllMocks());
 
 const database: TokenDatabase = {
-  collection: {
-    contract: {
-      deployments: {
-        lol: {
-          address: 'dadsdas',
-        },
-        lel: {
-          address: 'adasdjsadsajd',
-        },
+  contract: {
+    deployments: {
+      lol: {
+        address: 'dadsdas',
+      },
+      lel: {
+        address: 'adasdjsadsajd',
       },
     },
-    tokens: {
-      0: [
+  },
+  tokens: {
+    0: {
+      collectionIndex: 0,
+      metadata: [
         {
           name: 'name0_0',
         },
         {
           name: 'name0_1',
         },
-      ],
-      2: [
+      ]
+    },
+    2: {
+      collectionIndex: 1,
+      metadata: [
         {
           name: 'name2_0',
         },
@@ -44,37 +47,25 @@ const database: TokenDatabase = {
         {
           name: 'name2_2',
         },
-      ],
-    },
+      ]
+    }
   },
 };
 
 describe('ensureTokenExists', () => {
   it('should do nothing if token exists in the collection', () => {
-    expect(() => ensureTokenExists(database, 'collection', 0)).not.toThrow();
+    expect(() => ensureTokenExists(database, 0)).not.toThrow();
   });
-  it('should throw if no tokens property is found on collection', () => {
+  it('should throw if no tokens property is found', () => {
     expect(() =>
       ensureTokenExists(
-        { collection: {} } as unknown as TokenDatabase,
-        'collection',
+        { } as unknown as TokenDatabase,
         0
       )
     ).toThrow(HttpError);
   });
   it('should throw if token is not found', () => {
-    expect(() => ensureTokenExists(database, 'collection', 1)).toThrow(
-      HttpError
-    );
-  });
-});
-
-describe('ensureCollectionExists', () => {
-  it('should not throw if collection exists', () => {
-    expect(() => ensureCollectionExists(database, 'collection')).not.toThrow();
-  });
-  it('should throw is collection doesnt exist', () => {
-    expect(() => ensureCollectionExists(database, 'collection0')).toThrow(
+    expect(() => ensureTokenExists(database, 1)).toThrow(
       HttpError
     );
   });
@@ -83,12 +74,12 @@ describe('ensureCollectionExists', () => {
 describe('ensureDeploymentNetwork', () => {
   it('should not throw if deployment network exists for the collection', () => {
     expect(() =>
-      ensureDeploymentNetwork(database, 'collection', 'lol')
+      ensureDeploymentNetwork(database, 'lol')
     ).not.toThrow();
   });
   it('should throw if deployment network does not exist', () => {
     expect(() =>
-      ensureDeploymentNetwork(database, 'collection', 'lal')
+      ensureDeploymentNetwork(database, 'lal')
     ).toThrow(HttpError);
   });
 });
@@ -106,7 +97,6 @@ describe('api handler without ethers', () => {
   it('should return the token if it exists', async () => {
     const req = {
       params: {
-        collectionName: 'collection',
         tokenId: 0,
       },
     } as unknown as express.Request;
@@ -114,34 +104,12 @@ describe('api handler without ethers', () => {
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0][0]);
-  });
-
-  it('it should throw is collection does not exist', async () => {
-    const req = {
-      params: {
-        collectionName: 'collectionLol',
-        tokenId: 0,
-      },
-    } as unknown as express.Request;
-
-    const handler = createWithoutEthers(database);
-
-    await handler(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(send).toHaveBeenCalledWith({
-      error: {
-        status: 404,
-        message: `No such collection: ${req.params.collectionName}`,
-      },
-    });
+    expect(res.json).toHaveBeenCalledWith(database.tokens[0].metadata[0]);
   });
 
   it('it should throw if token does not exist', async () => {
     const req = {
       params: {
-        collectionName: 'collection',
         tokenId: 5,
       },
     } as unknown as express.Request;
@@ -154,7 +122,7 @@ describe('api handler without ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`,
+        message: `No token by tokenId ${req.params.tokenId}`,
       },
     });
   });
@@ -163,33 +131,9 @@ describe('api handler without ethers', () => {
 describe('api handler with ethers', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('should throw if collection does not exist', async () => {
-    const req = {
-      params: {
-        collectionName: 'kfddksdakds',
-        tokenId: 2,
-        networkName: 'lol',
-      },
-    } as unknown as express.Request;
-    const contractService = {} as unknown as ContractService;
-
-    const handler = createWithEthers(database, contractService);
-
-    await handler(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(send).toHaveBeenCalledWith({
-      error: {
-        status: 404,
-        message: `No such collection: ${req.params.collectionName}`,
-      },
-    });
-  });
-
   it('should throw if contract is not deployed to the network', async () => {
     const req = {
       params: {
-        collectionName: 'collection',
         tokenId: 2,
         networkName: 'lal',
       },
@@ -204,7 +148,7 @@ describe('api handler with ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `Collection ${req.params.collectionName} is not deployed to network ${req.params.networkName}`,
+        message: `Collection is not deployed to network ${req.params.networkName}`,
       },
     });
   });
@@ -226,7 +170,6 @@ describe('api handler with ethers', () => {
   it('should return the right metadata for the state', async () => {
     const req = {
       params: {
-        collectionName: 'collection',
         tokenId: 0,
         networkName: 'lol',
       },
@@ -238,13 +181,12 @@ describe('api handler with ethers', () => {
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0][1]);
+    expect(res.json).toHaveBeenCalledWith(database.tokens[0].metadata[1]);
   });
 
   it('should throw if tokenId is not found', async () => {
     const req = {
       params: {
-        collectionName: 'collection',
         tokenId: 3,
         networkName: 'lol',
       },
@@ -260,7 +202,7 @@ describe('api handler with ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`,
+        message: `No token by tokenId ${req.params.tokenId}`,
       },
     });
   });
