@@ -41,10 +41,10 @@ const database = {
 } as unknown as TokenDatabase;
 
 class MockContract {
-  public totalSupply = jest.fn();
+  public state = jest.fn();
 
   constructor(public address: string, public abi: ethers.ContractInterface, public provider: any) {
-    this.totalSupply = jest.fn();
+    this.state = jest.fn();
   }
 }
 
@@ -125,59 +125,59 @@ describe('ContractService', () => {
     });
   });
 
-  describe('getTotalSupply', () => {
-    it('should get the total supply from the contract', async () => {
+  describe('state', () => {
+    it('should get the state from the contract', async () => {
       const instance = new ContractService(database, config);
 
       (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
-        .totalSupply
+        .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
-      await expect(instance.getTotalSupply('collection0', 'network0')).resolves.toEqual(3);
-      expect(instance.totalSupplyMap['collection0']['network0']).toEqual(3);
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      expect(instance['_stateMap']['collection0']['network0'][1].value).toEqual(3);
     });
 
     it('should use the cached value, if cache did not yet expire', async () => {
-      const configWithCache = {...config, totalSupplyCacheTTlSeconds: 10}
+      const configWithCache = {...config, stateCacheTTLSeconds: 10}
 
       const instance = new ContractService(database, configWithCache);
 
       (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
-        .totalSupply
+        .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
       // from contract
-      await expect(instance.getTotalSupply('collection0', 'network0')).resolves.toEqual(3);
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.getTotalSupply('collection0', 'network0')).resolves.toEqual(3);
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
 
-      expect(instance['_contracts']['collection0']['network0'].totalSupply).toHaveBeenCalledTimes(1);
+      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(1);
     });
 
     it('should query the value from the contract again, after the cache expired', async () => {
-      const configWithCache = {...config, totalSupplyCacheTTlSeconds: 1}
+      const configWithCache = {...config, stateCacheTTLSeconds: 1}
 
       const instance = new ContractService(database, configWithCache);
 
       (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
-        .totalSupply
+        .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
       // from contract
-      await expect(instance.getTotalSupply('collection0', 'network0')).resolves.toEqual(3);
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.getTotalSupply('collection0', 'network0')).resolves.toEqual(3);
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
 
       // from contract again
-      const totalSupply = await new Promise(resolve => setTimeout(() =>
-        instance.getTotalSupply('collection0', 'network0').then(resolve), 1000))
+      const state = await new Promise(resolve => setTimeout(() =>
+        instance.state('collection0', 'network0', 1).then(resolve), 1000))
 
-      expect(totalSupply).toEqual(4);
+      expect(state).toEqual(4);
 
-      expect(instance['_contracts']['collection0']['network0'].totalSupply).toHaveBeenCalledTimes(2);
+      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(2);
     });
   });
 });
