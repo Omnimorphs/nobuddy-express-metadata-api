@@ -4,11 +4,11 @@ import {
   ensureCollectionExists,
   ensureDeploymentNetwork,
   ensureTokenExists,
-} from '../src/api/api';
-import { TokenDatabase } from '../src/types/TokenDatabase';
-import { HttpError } from '../src/errors';
+} from './src/api/api';
+import { TokenDatabase } from './src/types/TokenDatabase';
+import { HttpError } from './src/errors';
 import express from 'express';
-import ContractService from '../src/ContractService';
+import ContractService from './src/ContractService';
 import { mocked } from 'ts-jest';
 
 afterEach(() => jest.clearAllMocks());
@@ -32,7 +32,7 @@ const database: TokenDatabase = {
         },
         {
           name: 'name0_1',
-        }
+        },
       ],
       2: [
         {
@@ -43,10 +43,10 @@ const database: TokenDatabase = {
         },
         {
           name: 'name2_2',
-        }
-      ]
+        },
+      ],
     },
-  }
+  },
 };
 
 describe('ensureTokenExists', () => {
@@ -97,7 +97,7 @@ const send = jest.fn();
 
 const res = {
   json: jest.fn(),
-  status: jest.fn(() => ({send}))
+  status: jest.fn(() => ({ send })),
 } as unknown as express.Response;
 
 describe('api handler without ethers', () => {
@@ -107,7 +107,7 @@ describe('api handler without ethers', () => {
     const req = {
       params: {
         collectionName: 'collection',
-        tokenId: 0
+        tokenId: 0,
       },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
@@ -116,7 +116,6 @@ describe('api handler without ethers', () => {
 
     expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0][0]);
   });
-
 
   it('it should throw is collection does not exist', async () => {
     const req = {
@@ -134,8 +133,8 @@ describe('api handler without ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No such collection: ${req.params.collectionName}`
-      }
+        message: `No such collection: ${req.params.collectionName}`,
+      },
     });
   });
 
@@ -149,14 +148,14 @@ describe('api handler without ethers', () => {
 
     const handler = createWithoutEthers(database);
 
-    await handler(req, res)
+    await handler(req, res);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`
-      }
+        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`,
+      },
     });
   });
 });
@@ -182,8 +181,8 @@ describe('api handler with ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No such collection: ${req.params.collectionName}`
-      }
+        message: `No such collection: ${req.params.collectionName}`,
+      },
     });
   });
 
@@ -205,11 +204,10 @@ describe('api handler with ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `Collection ${req.params.collectionName} is not deployed to network ${req.params.networkName}`
-      }
+        message: `Collection ${req.params.collectionName} is not deployed to network ${req.params.networkName}`,
+      },
     });
   });
-
 
   const contractService = {
     state: jest.fn(),
@@ -218,13 +216,12 @@ describe('api handler with ethers', () => {
         lol: {
           0: {
             timestamp: 0,
-            value: 1
-          }
+            value: 1,
+          },
         },
       },
     },
   } as unknown as ContractService;
-
 
   it('should return the right metadata for the state', async () => {
     const req = {
@@ -243,7 +240,6 @@ describe('api handler with ethers', () => {
 
     expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0][1]);
   });
-
 
   it('should throw if tokenId is not found', async () => {
     const req = {
@@ -264,8 +260,8 @@ describe('api handler with ethers', () => {
     expect(send).toHaveBeenCalledWith({
       error: {
         status: 404,
-        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`
-      }
+        message: `No token by tokenId ${req.params.tokenId} in collection ${req.params.collectionName}`,
+      },
     });
   });
 });

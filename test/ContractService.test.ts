@@ -9,32 +9,13 @@ import { TokenDatabase } from '../src/types/TokenDatabase';
 jest.mock('ethers');
 
 const database = {
-  collection0: {
-    contract: {
-      deployments: {
-        network0: {
-          address: 0
-        },
-        network1: {
-          address: 1
-        }
-      }
-    }
-  },
-  collection1: {
-    contract: {
-      deployments: {}
-    }
-  },
-  collection2: {
-    contract: {
-      deployments: {
-        network0: {
-          address: 0
-        },
-        network2: {
-          address: 2
-        }
+  contract: {
+    deployments: {
+      network0: {
+        address: 0
+      },
+      network1: {
+        address: 1
       }
     }
   }
@@ -78,50 +59,21 @@ describe('ContractService', () => {
     it('should construct instance, and init contracts map correctly', () => {
       const instance = new ContractService(database, config);
 
-      // check providers
-      expect(Object.keys(instance['_providers'])).toHaveLength(3);
-
-      const providerNetworks: Network[] = [];
-      Object.values(instance['_providers']).forEach(provider => {
-        expect(provider).toBeInstanceOf(MockProvider);
-        expect((provider as MockProvider).apiKeys).toStrictEqual(config.ethers?.apiKeys);
-        providerNetworks.push((provider as MockProvider).network as Network);
-      })
-
-      expect(providerNetworks).toHaveLength(3);
-      expect(providerNetworks.includes('network0')).toBeTruthy();
-      expect(providerNetworks.includes('network1')).toBeTruthy();
-      expect(providerNetworks.includes('network2')).toBeTruthy();
-
       // check contracts
       expect(Object.keys(instance['_contracts'])).toHaveLength(2);
-      expect(Object.keys(instance['_contracts']).includes('collection0')).toBeTruthy();
-      expect(Object.keys(instance['_contracts']).includes('collection2')).toBeTruthy();
+      expect(Object.keys(instance['_contracts']).includes('network0')).toBeTruthy();
+      expect(Object.keys(instance['_contracts']).includes('network1')).toBeTruthy();
 
-      expect(Object.keys(instance['_contracts']['collection0'])).toHaveLength(2);
-      expect(Object.keys(instance['_contracts']['collection2'])).toHaveLength(2);
-
-      expect(instance['_contracts']['collection0']['network0']).toBeInstanceOf(MockContract);
-      expect(instance['_contracts']['collection0']['network0'].abi).toEqual(abi);
-      expect(instance['_contracts']['collection0']['network0'].address).toEqual(0);
-      expect(instance['_contracts']['collection0']['network0'].provider).toBeInstanceOf(MockProvider);
-      expect((instance['_contracts']['collection0']['network0'].provider as MockProvider).network).toEqual('network0');
-      expect(instance['_contracts']['collection0']['network1']).toBeInstanceOf(MockContract);
-      expect(instance['_contracts']['collection0']['network1'].abi).toEqual(abi);
-      expect(instance['_contracts']['collection0']['network1'].address).toEqual(1);
-      expect(instance['_contracts']['collection0']['network1'].provider).toBeInstanceOf(MockProvider);
-      expect((instance['_contracts']['collection0']['network1'].provider as MockProvider).network).toEqual('network1');
-
-      expect(instance['_contracts']['collection2']['network0']).toBeInstanceOf(MockContract);
-      expect(instance['_contracts']['collection2']['network0'].abi).toEqual(abi);
-      expect(instance['_contracts']['collection2']['network0'].address).toEqual(0);
-      expect(instance['_contracts']['collection2']['network0'].provider).toBeInstanceOf(MockProvider);
-      expect((instance['_contracts']['collection2']['network0'].provider as MockProvider).network).toEqual('network0');
-      expect(instance['_contracts']['collection2']['network2']).toBeInstanceOf(MockContract);
-      expect(instance['_contracts']['collection2']['network2'].abi).toEqual(abi);
-      expect(instance['_contracts']['collection2']['network2'].address).toEqual(2);
-      expect(instance['_contracts']['collection2']['network2'].provider).toBeInstanceOf(MockProvider);
-      expect((instance['_contracts']['collection2']['network2'].provider as MockProvider).network).toEqual('network2');
+      expect(instance['_contracts']['network0']).toBeInstanceOf(MockContract);
+      expect(instance['_contracts']['network0'].abi).toEqual(abi);
+      expect(instance['_contracts']['network0'].address).toEqual(0);
+      expect(instance['_contracts']['network0'].provider).toBeInstanceOf(MockProvider);
+      expect((instance['_contracts']['network0'].provider as MockProvider).network).toEqual('network0');
+      expect(instance['_contracts']['network1']).toBeInstanceOf(MockContract);
+      expect(instance['_contracts']['network1'].abi).toEqual(abi);
+      expect(instance['_contracts']['network1'].address).toEqual(1);
+      expect(instance['_contracts']['network1'].provider).toBeInstanceOf(MockProvider);
+      expect((instance['_contracts']['network1'].provider as MockProvider).network).toEqual('network1');
     });
   });
 
@@ -129,12 +81,12 @@ describe('ContractService', () => {
     it('should get the state from the contract', async () => {
       const instance = new ContractService(database, config);
 
-      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+      (instance['_contracts']['network0'] as unknown as MockContract)
         .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
-      expect(instance['_stateMap']['collection0']['network0'][1].value).toEqual(3);
+      await expect(instance.state('network0', 0, 1)).resolves.toEqual(3);
+      expect(instance['_stateMap']['network0'][1].value).toEqual(3);
     });
 
     it('should use the cached value, if cache did not yet expire', async () => {
@@ -142,17 +94,17 @@ describe('ContractService', () => {
 
       const instance = new ContractService(database, configWithCache);
 
-      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+      (instance['_contracts']['network0'] as unknown as MockContract)
         .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
       // from contract
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
 
-      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(1);
+      expect(instance['_contracts']['network0'].state).toHaveBeenCalledTimes(1);
     });
 
     it('should query the value from the contract again, after the cache expired', async () => {
@@ -160,54 +112,54 @@ describe('ContractService', () => {
 
       const instance = new ContractService(database, configWithCache);
 
-      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+      (instance['_contracts']['network0'] as unknown as MockContract)
         .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
       // from contract
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
 
       // from contract again
       const state = await new Promise(resolve => setTimeout(() =>
-        instance.state('collection0', 'network0', 1).then(resolve), 1000))
+        instance.state('network0', 1, 1).then(resolve), 1000))
 
       expect(state).toEqual(4);
 
-      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(2);
+      expect(instance['_contracts']['network0'].state).toHaveBeenCalledTimes(2);
     });
 
     it('should return last saved value, if state contract call fails', async () => {
       const instance = new ContractService(database, config);
 
-      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+      (instance['_contracts']['network0'] as unknown as MockContract)
         .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
         .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
       // from contract
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(3);
 
-      const timestamp = instance['_stateMap']['collection0']['network0'][1].timestamp;
+      const timestamp = instance['_stateMap']['network0'][1].timestamp;
 
       // from cache
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(3);
 
-      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(2);
-      expect(instance['_stateMap']['collection0']['network0'][1].timestamp).toEqual(timestamp);
+      expect(instance['_contracts']['network0'].state).toHaveBeenCalledTimes(2);
+      expect(instance['_stateMap']['network0'][1].timestamp).toEqual(timestamp);
     });
 
     it('should return 0, if state contract call fails and there is no saved value', async () => {
       const instance = new ContractService(database, config);
 
-      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+      (instance['_contracts']['network0'] as unknown as MockContract)
         .state
         .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
-      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(0);
+      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(0);
     });
   });
 });
