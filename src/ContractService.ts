@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { ApiConfig } from './types/ApiConfig';
 import { get, set } from 'lodash';
 
-export const abi = ['function ownerOf(uint256) view returns (address)'];
+export const abi = ['function state(uint256 id) view returns (uint256)'];
 
 class ContractService implements IContractService {
   /**
@@ -14,9 +14,9 @@ class ContractService implements IContractService {
   private _contracts: Record<Slug, Record<Network, ethers.Contract>> = {};
   private readonly _providers: Record<Network, ethers.providers.BaseProvider> =
     {};
-  private _existsMap: Record<
+  private _stateMap: Record<
     Slug,
-    Record<Network, Record<string, { value: boolean; timestamp: number }>>
+    Record<Network, Record<string, { value: number; timestamp: number }>>
   > = {};
 
   constructor(
@@ -26,40 +26,41 @@ class ContractService implements IContractService {
     this._initContracts();
   }
 
-  async exists(
+  async state(
     collectionName: Slug,
     networkName: Network,
     tokenId: number
-  ): Promise<boolean> {
+  ): Promise<number> {
     const timestamp = Date.now() / 1000;
+    const savedValue = get(this._stateMap, [
+      collectionName,
+      networkName,
+      tokenId,
+      'value',
+    ]);
+    const savedTimestamp = get(this._stateMap, [
+      collectionName,
+      networkName,
+      tokenId,
+      'timestamp',
+    ]);
+
     if (
-      typeof get(this._existsMap, [
-        collectionName,
-        networkName,
-        tokenId,
-        'value',
-      ]) === 'boolean' &&
-      get(this._existsMap, [
-        collectionName,
-        networkName,
-        tokenId,
-        'timestamp',
-      ]) >
-        timestamp - this._config.totalSupplyCacheTTlSeconds
+      typeof savedValue === 'number' &&
+      savedTimestamp > timestamp - this._config.stateCacheTTLSeconds
     ) {
-      return this._existsMap[collectionName][networkName][tokenId].value;
+      return savedValue;
     }
 
-    let value = true;
-    try {
-      await this._contracts[collectionName][networkName].ownerOf(tokenId);
-    } catch (e) {
-      value = false;
-    }
-    set(this._existsMap, [collectionName, networkName, tokenId], {
+    const value = parseInt(
+      await this._contracts[collectionName][networkName].state(tokenId)
+    );
+
+    set(this._stateMap, [collectionName, networkName, tokenId], {
       value,
       timestamp,
     });
+
     return value;
   }
 

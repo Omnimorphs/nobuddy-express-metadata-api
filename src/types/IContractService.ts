@@ -1,9 +1,9 @@
 import { Network, Slug } from './_';
 
 export interface IContractService {
-  exists: (
+  state: (
     collectionName: Slug,
     networkName: Network,
     tokenId: number
-  ) => Promise<boolean>;
+  ) => Promise<number>;
 }

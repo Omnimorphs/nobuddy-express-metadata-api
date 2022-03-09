@@ -42,16 +42,9 @@ export const createWithoutEthers =
 
       ensureCollectionExists(database, collectionName);
 
-      if (
-        isCollectionRevealed(database, collectionName) &&
-        !isTokenReserved(database, collectionName, tokenId)
-      ) {
-        ensureTokenExists(database, collectionName, tokenId);
-        res.json(database[collectionName].tokens[tokenId]);
-      } else {
-        ensureTokenExists(database, collectionName, 'placeholder');
-        res.json(database[collectionName].tokens.placeholder);
-      }
+      ensureTokenExists(database, collectionName, tokenId);
+      ensureTokenStateExists(database, collectionName, tokenId, 0);
+      res.json(database[collectionName].tokens[tokenId][0]);
     } catch (error) {
       res.status(error.status || 500).send({
         error: {
@@ -71,23 +64,15 @@ export const createWithEthers =
       ensureCollectionExists(database, collectionName);
       ensureDeploymentNetwork(database, collectionName, networkName);
 
-      const exists = await contractService.exists(
+      const state = await contractService.state(
         collectionName,
         networkName,
         tokenId
       );
 
-      if (
-        isCollectionRevealed(database, collectionName) &&
-        !isTokenReserved(database, collectionName, tokenId) &&
-        exists
-      ) {
-        ensureTokenExists(database, collectionName, tokenId);
-        res.json(database[collectionName].tokens[tokenId]);
-      } else {
-        ensureTokenExists(database, collectionName, 'placeholder');
-        res.json(database[collectionName].tokens.placeholder);
-      }
+      ensureTokenExists(database, collectionName, tokenId);
+      ensureTokenStateExists(database, collectionName, tokenId, state);
+      res.json(database[collectionName].tokens[tokenId][state]);
     } catch (error) {
       res.status(error.status || 500).send({
         error: {
@@ -97,24 +82,6 @@ export const createWithEthers =
       });
     }
   };
-
-export const isCollectionRevealed = (
-  database: TokenDatabase,
-  collectionName: Slug
-): boolean => {
-  return Boolean(
-    !database[collectionName].revealTime ||
-      (database[collectionName].revealTime as number) <= Date.now()
-  );
-};
-
-export const isTokenReserved = (
-  database: TokenDatabase,
-  collectionName: Slug,
-  tokenId: number
-): boolean => {
-  return Boolean(database[collectionName]?.reservedTokens?.includes(tokenId));
-};
 
 export const ensureCollectionExists = (
   database: TokenDatabase,
@@ -130,10 +97,24 @@ export const ensureTokenExists = (
   collectionName: Slug,
   tokenId: string | number
 ): void => {
-  if (!database[collectionName]?.tokens?.[tokenId]) {
+  if (!Array.isArray(database[collectionName]?.tokens?.[tokenId])) {
     throw new HttpError(
       404,
       `No token by tokenId ${tokenId} in collection ${collectionName}`
+    );
+  }
+};
+
+export const ensureTokenStateExists = (
+  database: TokenDatabase,
+  collectionName: Slug,
+  tokenId: string | number,
+  state: number
+): void => {
+  if (!database[collectionName]?.tokens?.[tokenId]?.[state]) {
+    throw new HttpError(
+      404,
+      `No state ${state} for tokenId ${tokenId} in collection ${collectionName}`
     );
   }
 };

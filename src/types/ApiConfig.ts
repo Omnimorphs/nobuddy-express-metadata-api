@@ -4,5 +4,5 @@ export type ApiConfig = {
   ethers?: {
     apiKeys?: ApiKeys;
   };
-  totalSupplyCacheTTlSeconds: number;
+  stateCacheTTLSeconds: number;
 };

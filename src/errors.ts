@@ -1,6 +1,3 @@
-export class InvalidAuthTypeError extends Error {}
-export class InvalidTotalSupplyResponse extends Error {}
-
 export class HttpError extends Error {
   status: number;
 
