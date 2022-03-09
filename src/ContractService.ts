@@ -50,7 +50,7 @@ class ContractService implements IContractService {
     let value;
     try {
       value = parseInt(
-        await this._contracts[collectionIndex][networkName].state(
+        await this._contracts[networkName].state(
           parseInt(collectionIndex.toString()),
           tokenId
         )
