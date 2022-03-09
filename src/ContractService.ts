@@ -52,9 +52,14 @@ class ContractService implements IContractService {
       return savedValue;
     }
 
-    const value = parseInt(
-      await this._contracts[collectionName][networkName].state(tokenId)
-    );
+    let value;
+    try {
+      value = parseInt(
+        await this._contracts[collectionName][networkName].state(tokenId)
+      );
+    } catch (e) {
+      return savedValue || 0;
+    }
 
     set(this._stateMap, [collectionName, networkName, tokenId], {
       value,

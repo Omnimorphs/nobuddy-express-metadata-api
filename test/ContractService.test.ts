@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { mocked } from 'ts-jest';
+import { mocked } from 'ts-jest/utils';
 import { ApiKeys } from '../src/types/ApiKeys';
 import { Network } from '../src/types/_';
 import { ApiConfig } from '../src/types/ApiConfig';
@@ -178,6 +178,36 @@ describe('ContractService', () => {
       expect(state).toEqual(4);
 
       expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return last saved value, if state contract call fails', async () => {
+      const instance = new ContractService(database, config);
+
+      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+        .state
+        .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
+        .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
+
+      // from contract
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+
+      const timestamp = instance['_stateMap']['collection0']['network0'][1].timestamp;
+
+      // from cache
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(3);
+
+      expect(instance['_contracts']['collection0']['network0'].state).toHaveBeenCalledTimes(2);
+      expect(instance['_stateMap']['collection0']['network0'][1].timestamp).toEqual(timestamp);
+    });
+
+    it('should return 0, if state contract call fails and there is no saved value', async () => {
+      const instance = new ContractService(database, config);
+
+      (instance['_contracts']['collection0']['network0'] as unknown as MockContract)
+        .state
+        .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
+
+      await expect(instance.state('collection0', 'network0', 1)).resolves.toEqual(0);
     });
   });
 });
