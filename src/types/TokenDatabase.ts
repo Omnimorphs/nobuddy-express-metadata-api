@@ -1,3 +1,6 @@
-import { TokenCollection } from './TokenCollection';
+import { CollectionContract } from './CollectionContract';
 
-export type TokenDatabase = Record<string, TokenCollection>;
+export type TokenDatabase = {
+  contract: CollectionContract;
+  tokens: Record<string, { collectionIndex: number; metadata: unknown[] }>;
+};

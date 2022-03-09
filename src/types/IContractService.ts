@@ -1,9 +1,9 @@
-import { Network, Slug } from './_';
+import { Network } from './_';
 
 export interface IContractService {
   state: (
-    collectionName: Slug,
     networkName: Network,
+    collectionIndex: string | number,
     tokenId: number
   ) => Promise<number>;
 }
