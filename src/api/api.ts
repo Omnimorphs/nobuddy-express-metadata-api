@@ -65,13 +65,23 @@ export const createWithEthers =
       ensureTokenExists(database, tokenId);
 
       const token = database.tokens[tokenId];
-      const collectionIndex = token.collectionIndex;
+      const collectionIndex = token.collectionId;
 
-      const state = await contractService.state(
-        networkName,
-        collectionIndex,
-        tokenId
-      );
+      let state;
+      try {
+        state = await contractService.state(
+          networkName,
+          collectionIndex,
+          tokenId
+        );
+      } catch (e) {
+        res.status(404).send({
+          error: {
+            status: 404,
+            message: 'Not found',
+          },
+        });
+      }
 
       ensureTokenStateExists(database, tokenId, state);
 

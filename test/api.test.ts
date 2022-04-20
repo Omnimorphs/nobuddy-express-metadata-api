@@ -25,7 +25,7 @@ const database: TokenDatabase = {
   },
   tokens: {
     0: {
-      collectionIndex: 0,
+      collectionId: 0,
       metadata: [
         {
           name: 'name0_0',
@@ -36,7 +36,7 @@ const database: TokenDatabase = {
       ]
     },
     2: {
-      collectionIndex: 1,
+      collectionId: 1,
       metadata: [
         {
           name: 'name2_0',

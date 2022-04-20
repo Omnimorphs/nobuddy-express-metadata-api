@@ -1,7 +1,7 @@
 import { ApiConfig } from '../types/ApiConfig';
 
 const config: ApiConfig = {
-  stateCacheTTLSeconds: 300,
+  stateCacheTTLSeconds: 180,
 };
 
 export default config;
