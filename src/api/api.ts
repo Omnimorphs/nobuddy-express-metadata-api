@@ -81,6 +81,7 @@ export const createWithEthers =
             message: e.message,
           },
         });
+        return;
       }
 
       ensureTokenStateExists(database, tokenId, state);
