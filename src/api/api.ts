@@ -78,7 +78,7 @@ export const createWithEthers =
         res.status(404).send({
           error: {
             status: 404,
-            message: 'Not found',
+            message: e.message,
           },
         });
       }

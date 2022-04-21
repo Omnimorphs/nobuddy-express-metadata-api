@@ -161,5 +161,21 @@ describe('ContractService', () => {
 
       await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(0);
     });
+
+
+    it('should throw intentional errors but swallow unintentional ones', async () => {
+      const instance = new ContractService(database, config);
+
+      const intentionalError = new Error('PixelBlossom: valami');
+      const unintentionalError = new Error('Error Error Error');
+
+      (instance['_contracts']['network0'] as unknown as MockContract)
+        .state
+        .mockRejectedValueOnce(intentionalError)
+        .mockRejectedValueOnce(unintentionalError);
+
+      await expect(instance.state( 'network0', 1, 1)).rejects.toEqual(intentionalError);
+      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(0);
+    });
   });
 });

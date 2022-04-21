@@ -56,6 +56,11 @@ class ContractService implements IContractService {
         )
       );
     } catch (e) {
+      // if intentional contract error, throw
+      if (e?.message?.match(/PixelBlossom:/)) {
+        throw e;
+      }
+      // return saved value or 0, if not intentional contract error
       return savedValue || 0;
     }
 
