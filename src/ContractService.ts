@@ -5,9 +5,7 @@ import { ethers } from 'ethers';
 import { ApiConfig } from './types/ApiConfig';
 import { get, set } from 'lodash';
 
-export const abi = [
-  'function state(uint256 collectionIndex, uint256 id) view returns (uint256)',
-];
+export const abi = ['function state() view returns (uint256)'];
 
 class ContractService implements IContractService {
   /**
@@ -15,10 +13,7 @@ class ContractService implements IContractService {
    */
   private _contracts: Record<Network, ethers.Contract> = {};
 
-  private _stateMap: Record<
-    Network,
-    Record<string, { value: number; timestamp: number }>
-  > = {};
+  private _stateMap: Record<Network, { value: number; timestamp: number }> = {};
 
   constructor(
     private readonly _database: TokenDatabase,
@@ -27,18 +22,10 @@ class ContractService implements IContractService {
     this._initContracts();
   }
 
-  async state(
-    networkName: Network,
-    collectionIndex: string | number,
-    tokenId: number
-  ): Promise<number> {
+  async state(networkName: Network): Promise<number> {
     const timestamp = Date.now() / 1000;
-    const savedValue = get(this._stateMap, [networkName, tokenId, 'value']);
-    const savedTimestamp = get(this._stateMap, [
-      networkName,
-      tokenId,
-      'timestamp',
-    ]);
+    const savedValue = get(this._stateMap, [networkName, 'value']);
+    const savedTimestamp = get(this._stateMap, [networkName, 'timestamp']);
 
     if (
       typeof savedValue === 'number' &&
@@ -49,22 +36,17 @@ class ContractService implements IContractService {
 
     let value;
     try {
-      value = parseInt(
-        await this._contracts[networkName].state(
-          parseInt(collectionIndex.toString()),
-          tokenId
-        )
-      );
+      value = parseInt(await this._contracts[networkName].state());
     } catch (e) {
       // if intentional contract error, throw
-      if (e?.message?.match(/PixelBlossom:/)) {
+      if (e?.message?.match(/PixelBlossom/)) {
         throw e;
       }
       // return saved value or 0, if not intentional contract error
       return savedValue || 0;
     }
 
-    set(this._stateMap, [networkName, tokenId], {
+    set(this._stateMap, [networkName], {
       value,
       timestamp,
     });

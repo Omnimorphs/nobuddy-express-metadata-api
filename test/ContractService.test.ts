@@ -85,8 +85,8 @@ describe('ContractService', () => {
         .state
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
-      await expect(instance.state('network0', 0, 1)).resolves.toEqual(3);
-      expect(instance['_stateMap']['network0'][1].value).toEqual(3);
+      await expect(instance.state('network0')).resolves.toEqual(3);
+      expect(instance['_stateMap']['network0'].value).toEqual(3);
     });
 
     it('should use the cached value, if cache did not yet expire', async () => {
@@ -99,10 +99,10 @@ describe('ContractService', () => {
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(3))
 
       // from contract
-      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state('network0')).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state('network0')).resolves.toEqual(3);
 
       expect(instance['_contracts']['network0'].state).toHaveBeenCalledTimes(1);
     });
@@ -118,14 +118,14 @@ describe('ContractService', () => {
         .mockResolvedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
       // from contract
-      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state('network0')).resolves.toEqual(3);
 
       // from cache
-      await expect(instance.state('network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state('network0')).resolves.toEqual(3);
 
       // from contract again
       const state = await new Promise(resolve => setTimeout(() =>
-        instance.state('network0', 1, 1).then(resolve), 1000))
+        instance.state('network0').then(resolve), 1000))
 
       expect(state).toEqual(4);
 
@@ -141,15 +141,15 @@ describe('ContractService', () => {
         .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
       // from contract
-      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state( 'network0')).resolves.toEqual(3);
 
-      const timestamp = instance['_stateMap']['network0'][1].timestamp;
+      const timestamp = instance['_stateMap']['network0'].timestamp;
 
       // from cache
-      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(3);
+      await expect(instance.state( 'network0')).resolves.toEqual(3);
 
       expect(instance['_contracts']['network0'].state).toHaveBeenCalledTimes(2);
-      expect(instance['_stateMap']['network0'][1].timestamp).toEqual(timestamp);
+      expect(instance['_stateMap']['network0'].timestamp).toEqual(timestamp);
     });
 
     it('should return 0, if state contract call fails and there is no saved value', async () => {
@@ -159,7 +159,7 @@ describe('ContractService', () => {
         .state
         .mockRejectedValueOnce(jest.requireActual('ethers').ethers.BigNumber.from(4))
 
-      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(0);
+      await expect(instance.state( 'network0')).resolves.toEqual(0);
     });
 
 
@@ -174,8 +174,8 @@ describe('ContractService', () => {
         .mockRejectedValueOnce(intentionalError)
         .mockRejectedValueOnce(unintentionalError);
 
-      await expect(instance.state( 'network0', 1, 1)).rejects.toEqual(intentionalError);
-      await expect(instance.state( 'network0', 1, 1)).resolves.toEqual(0);
+      await expect(instance.state( 'network0')).rejects.toEqual(intentionalError);
+      await expect(instance.state( 'network0')).resolves.toEqual(0);
     });
   });
 });

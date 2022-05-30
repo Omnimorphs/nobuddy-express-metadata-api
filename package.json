@@ -1,6 +1,6 @@
 {
   "name": "nobuddy-express-metadata-api",
-  "version": "2.1.4",
+  "version": "2.2.0",
   "description": "Simple nodejs metadata API implementation for NFT (Non-Fungible Token) collections for express",
   "main": "dist/index.js",
   "scripts": {
