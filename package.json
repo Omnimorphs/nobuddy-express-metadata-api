@@ -6,7 +6,7 @@
   "scripts": {
     "test": "jest --coverage",
     "build": "rimraf dist/; npx tsc --declaration --project ./",
-    "publish": "npm run test && npm run build && npm publish"
+    "publish:package": "npm run test && npm run build && npm publish"
   },
   "keywords": [
     "NFT",
