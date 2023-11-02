@@ -31,30 +31,33 @@ class ContractService implements IContractService {
     networkName: Network,
     tokenId: number
   ): Promise<boolean> {
-    const timestamp = Date.now() / 1000;
+    let timestamp = Date.now() / 1000;
+
+    const savedValue = get(
+      this._existsMap,
+      [collectionName, networkName, tokenId, 'value'],
+      false
+    );
+    const savedTimestamp = get(
+      this._existsMap,
+      [collectionName, networkName, tokenId, 'timestamp'],
+      0
+    );
+
     if (
-      typeof get(this._existsMap, [
-        collectionName,
-        networkName,
-        tokenId,
-        'value',
-      ]) === 'boolean' &&
-      get(this._existsMap, [
-        collectionName,
-        networkName,
-        tokenId,
-        'timestamp',
-      ]) >
-        timestamp - this._config.totalSupplyCacheTTlSeconds
+      typeof savedValue === 'boolean' &&
+      savedTimestamp > timestamp - this._config.totalSupplyCacheTTlSeconds
     ) {
-      return this._existsMap[collectionName][networkName][tokenId].value;
+      return savedValue;
     }
 
     let value = true;
     try {
       await this._contracts[collectionName][networkName].ownerOf(tokenId);
     } catch (e) {
-      value = false;
+      console.error(e);
+      value = savedValue;
+      timestamp = savedTimestamp;
     }
     set(this._existsMap, [collectionName, networkName, tokenId], {
       value,

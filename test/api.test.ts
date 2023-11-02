@@ -1,10 +1,11 @@
 import {
   createWithEthers,
   createWithoutEthers,
-  ensureCollectionExists, ensureDeploymentNetwork,
+  ensureCollectionExists,
+  ensureDeploymentNetwork,
   ensureTokenExists,
   isCollectionRevealed,
-  isTokenReserved
+  isTokenReserved,
 } from '../src/api/api';
 import { TokenDatabase } from '../src/types/TokenDatabase';
 import { HttpError } from '../src/errors';
@@ -22,8 +23,8 @@ const database: TokenDatabase = {
           address: 'dadsdas',
         },
         lel: {
-          address: 'adasdjsadsajd'
-        }
+          address: 'adasdjsadsajd',
+        },
       },
     },
     reservedTokens: [1, 2],
@@ -36,8 +37,8 @@ const database: TokenDatabase = {
         name: 'name2',
       },
       placeholder: {
-        name: 'placeholder'
-      }
+        name: 'placeholder',
+      },
     },
   },
   collectionReservedNoPlaceholder: {
@@ -56,7 +57,7 @@ const database: TokenDatabase = {
       },
       2: {
         name: 'name1',
-      }
+      },
     },
   },
   collectionNoReserved: {
@@ -151,15 +152,22 @@ describe('isCollectionRevealed', () => {
 
 describe('ensureDeploymentNetwork', () => {
   it('should not throw if deployment network exists for the collection', () => {
-    expect(() => ensureDeploymentNetwork(database, 'collection', 'lol')).not.toThrow();
+    expect(() =>
+      ensureDeploymentNetwork(database, 'collection', 'lol')
+    ).not.toThrow();
   });
   it('should throw if deployment network does not exist', () => {
-    expect(() => ensureDeploymentNetwork(database, 'collection', 'lal')).toThrow(HttpError);
+    expect(() =>
+      ensureDeploymentNetwork(database, 'collection', 'lal')
+    ).toThrow(HttpError);
   });
 });
 
 const res = {
-  json: jest.fn()
+  json: jest.fn(),
+  status: jest.fn().mockImplementation(() => ({
+    send: jest.fn(),
+  })),
 } as unknown as express.Response;
 
 describe('api handler without ethers', () => {
@@ -169,66 +177,77 @@ describe('api handler without ethers', () => {
     const req = {
       params: {
         collectionName: 'collection',
-        tokenId: 0
-      }
+        tokenId: 0,
+      },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0])
+    expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0]);
   });
 
   it('it should return placeholder if token is reserved', async () => {
     const req = {
       params: {
         collectionName: 'collection',
-        tokenId: 2
-      }
+        tokenId: 2,
+      },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens.placeholder);
+    expect(res.json).toHaveBeenCalledWith(
+      database.collection.tokens.placeholder
+    );
   });
 
   it('it should throw is collection does not exist', async () => {
     const req = {
       params: {
         collectionName: 'collectionLol',
-        tokenId: 0
-      }
+        tokenId: 0,
+      },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
 
-    await expect(() =>  handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
   it('it should throw is token does not exist', async () => {
     const req = {
       params: {
         collectionName: 'collection',
-        tokenId: 5
-      }
+        tokenId: 5,
+      },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
 
-    await expect(() =>  handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
   it('it should throw if querying reserved token and there is no placeholder', async () => {
     const req = {
       params: {
         collectionName: 'collectionReservedNoPlaceholder',
-        tokenId: 2
-      }
+        tokenId: 2,
+      },
     } as unknown as express.Request;
     const handler = createWithoutEthers(database);
 
-    await expect(() =>  handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
-})
+});
 
 describe('api handler with ethers', () => {
   afterEach(() => jest.clearAllMocks());
@@ -238,14 +257,17 @@ describe('api handler with ethers', () => {
       params: {
         collectionName: 'kfddksdakds',
         tokenId: 2,
-        networkName: 'lol'
-      }
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
     const contractService = {} as unknown as ContractService;
 
     const handler = createWithEthers(database, contractService);
 
-    await expect(() => handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
   it('should throw if contract is not deployed to the network', async () => {
@@ -253,41 +275,41 @@ describe('api handler with ethers', () => {
       params: {
         collectionName: 'collection',
         tokenId: 2,
-        networkName: 'lal'
-      }
+        networkName: 'lal',
+      },
     } as unknown as express.Request;
     const contractService = {} as unknown as ContractService;
 
     const handler = createWithEthers(database, contractService);
 
-    await expect(() => handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
   const contractService = {
-    getTotalSupply: jest.fn(),
-    totalSupplyMap: {
-      collection: {
-        lol: 1
-      }
-    }
+    exists: jest.fn(),
   } as unknown as ContractService;
 
-  it('should return the placeholder token, if totalSupply is lte the tokenId', async () => {
+  it('should return the placeholder token, if tokenId doesnt exist', async () => {
     const req = {
       params: {
         collectionName: 'collection',
         tokenId: 2,
-        networkName: 'lol'
-      }
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
 
-    mocked(contractService.getTotalSupply).mockResolvedValueOnce(0);
+    mocked(contractService.exists).mockResolvedValueOnce(false);
 
     const handler = createWithEthers(database, contractService);
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens.placeholder);
+    expect(res.json).toHaveBeenCalledWith(
+      database.collection.tokens.placeholder
+    );
   });
 
   it('should return the placeholder token, if tokenId is reserved', async () => {
@@ -295,102 +317,74 @@ describe('api handler with ethers', () => {
       params: {
         collectionName: 'collection',
         tokenId: 1,
-        networkName: 'lol'
-      }
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
 
-    mocked(contractService.getTotalSupply).mockResolvedValueOnce(2);
+    mocked(contractService.exists).mockResolvedValueOnce(true);
 
     const handler = createWithEthers(database, contractService);
 
     await handler(req, res);
 
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens.placeholder);
+    expect(res.json).toHaveBeenCalledWith(
+      database.collection.tokens.placeholder
+    );
   });
 
-  it('should return the token, if totalSupply is gt then tokenId', async () => {
+  it('should return the token, if tokenId exists', async () => {
     const req = {
       params: {
         collectionName: 'collection',
         tokenId: 0,
-        networkName: 'lol'
-      }
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
 
-    mocked(contractService.getTotalSupply).mockResolvedValueOnce(1);
+    mocked(contractService.exists).mockResolvedValueOnce(true);
 
     const handler = createWithEthers(database, contractService);
 
     await handler(req, res);
 
     expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0]);
-  });
-
-  it('should fall back to the saved totalSupply value, if getTotalSupply call fails', async () => {
-    const req = {
-      params: {
-        collectionName: 'collection',
-        tokenId: 0,
-        networkName: 'lol'
-      }
-    } as unknown as express.Request;
-
-    mocked(contractService.getTotalSupply).mockRejectedValueOnce(null);
-
-    const handler = createWithEthers(database, contractService);
-
-    await handler(req, res);
-
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens[0]);
-  });
-
-  it('should fall back to 0 totalSupply, if getTotalSupply call fails and there is no saved totalSupply value', async () => {
-    const req = {
-      params: {
-        collectionName: 'collection',
-        tokenId: 0,
-        networkName: 'lel'
-      }
-    } as unknown as express.Request;
-
-    mocked(contractService.getTotalSupply).mockRejectedValueOnce(null);
-
-    const handler = createWithEthers(database, contractService);
-
-    await handler(req, res);
-
-    expect(res.json).toHaveBeenCalledWith(database.collection.tokens.placeholder);
   });
 
   it('should throw if tokenId is not found', async () => {
     const req = {
       params: {
         collectionName: 'collection',
-        tokenId: 3,
-        networkName: 'lol'
-      }
+        tokenId: 4,
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
 
-    mocked(contractService.getTotalSupply).mockResolvedValueOnce(4);
+    mocked(contractService.exists).mockResolvedValueOnce(true);
 
     const handler = createWithEthers(database, contractService);
 
-    await expect(() => handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
   it('should throw if placeholder is not found', async () => {
     const req = {
       params: {
         collectionName: 'collectionReservedNoPlaceholder',
-        tokenId: 0,
-        networkName: 'lol'
-      }
+        tokenId: 1,
+        networkName: 'lol',
+      },
     } as unknown as express.Request;
 
-    mocked(contractService.getTotalSupply).mockResolvedValueOnce(0);
+    mocked(contractService.exists).mockResolvedValueOnce(true);
 
     const handler = createWithEthers(database, contractService);
 
-    await expect(() => handler(req, res)).rejects.toThrow(HttpError);
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 });

@@ -89,6 +89,7 @@ export const createWithEthers =
         res.json(database[collectionName].tokens.placeholder);
       }
     } catch (error) {
+      console.error(error.status);
       res.status(error.status || 500).send({
         error: {
           status: error.status || 500,
