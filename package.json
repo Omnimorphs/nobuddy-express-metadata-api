@@ -1,11 +1,12 @@
 {
   "name": "nobuddy-express-metadata-api",
-  "version": "2.0.3",
+  "version": "2.0.5",
   "description": "Simple nodejs metadata API implementation for NFT (Non-Fungible Token) collections for express",
   "main": "dist/index.js",
   "scripts": {
     "test": "jest --coverage",
-    "build": "rimraf dist/; npx tsc --declaration --project ./"
+    "build": "rimraf dist/; npx tsc --declaration --project ./",
+    "publish": "npm run test && npm run build && npm publish"
   },
   "keywords": [
     "NFT",

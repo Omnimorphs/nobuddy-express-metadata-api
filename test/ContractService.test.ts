@@ -298,10 +298,13 @@ describe('ContractService', () => {
         instance.exists('collection0', 'network0', 1)
       ).resolves.toEqual(false);
 
-      // saved 0 timestamp to cache, so it calls again on the next request
+      const now = Math.round(Date.now() / 1000);
+      // saved timestamp to cache, so it call again only after ttl expired
       expect(
-        instance['_existsMap']['collection0']['network0'][1].timestamp
-      ).toEqual(0);
+        Math.round(
+          instance['_existsMap']['collection0']['network0'][1].timestamp
+        )
+      ).toEqual(now);
     });
 
     it('should reuse saved value if contract call fails and cache expired - there is a saved value', async () => {

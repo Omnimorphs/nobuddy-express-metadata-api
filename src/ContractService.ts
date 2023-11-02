@@ -55,9 +55,12 @@ class ContractService implements IContractService {
     try {
       await this._contracts[collectionName][networkName].ownerOf(tokenId);
     } catch (e) {
-      console.error(e);
+      console.error(
+        `Error for collection: ${collectionName}, on network: ${networkName}, for tokenId: ${tokenId}`,
+        e
+      );
       value = savedValue;
-      timestamp = savedTimestamp;
+      timestamp = savedTimestamp || timestamp;
     }
     set(this._existsMap, [collectionName, networkName, tokenId], {
       value,
